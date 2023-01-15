@@ -15,6 +15,12 @@ final class SwiftPinboardTests: XCTestCase {
         XCTAssertEqual(urlString, "https://api.pinboard.in/v1/bar?baz=wibble&format=json")
     }
 
+    func testGetURLWithEncodedQueryArgs() throws {
+        let client = PinboardClient()
+        let urlString = client.getURLString(path: "/bar", queryArgs: ["baz":"Wibble Wobble"])
+        XCTAssertEqual(urlString, "https://api.pinboard.in/v1/bar?baz=Wibble%20Wobble&format=json")
+    }
+
     func testAddBookmarkWithoutAuthFails() async throws {
         let client = PinboardClient()
         do {

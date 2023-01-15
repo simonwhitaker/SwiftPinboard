@@ -10,12 +10,13 @@ struct PinboardResponse: Decodable {
 
 let endpoint = "https://api.pinboard.in/v1"
 
-enum PinboardClientError: Error {
+public enum PinboardClientError: Error {
     case InvalidURL
     case RequestFailed(_ statusCode: Int? = nil)
     case DecodingJSONFailed
     case AuthenticationError
     case UnexpectedResponseCode(_ responseCode: String)
+    case UnencodableQueryParam(_ param: String?)
 }
 
 @available(macOS 12.0, *)
@@ -26,7 +27,7 @@ public struct PinboardClient {
         self.authToken = authToken
     }
 
-    func getURLString(path: String, queryArgs: [String: String]) -> String {
+    func getURLString(path: String, queryArgs: [String: String]) throws -> String {
         assert(path.starts(with: "/"))
         var args = [
             "format": "json",
@@ -37,8 +38,11 @@ public struct PinboardClient {
 
         args.merge(queryArgs) {(first, _) in first}
 
-        let argString = args.map({ (key: String, value: String?) in
-            [key, value!].joined(separator: "=")
+        let argString = try args.map({ (key: String, value: String?) in
+            guard let encodedValue = value?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                throw PinboardClientError.UnencodableQueryParam(value)
+            }
+            return key + "=" + encodedValue
         })
             .sorted() // makes testing easier 😬
             .joined(separator: "&")
@@ -46,13 +50,13 @@ public struct PinboardClient {
     }
 
     func sendRequest(path: String, queryArgs: [String: String]) async throws {
-        let urlString = getURLString(path: path, queryArgs: queryArgs)
+        let urlString = try getURLString(path: path, queryArgs: queryArgs)
         guard let url = URL(string: urlString) else {
             throw PinboardClientError.InvalidURL
         }
 
         guard let (data, httpResponse) = try? await URLSession.shared.data(from: url) else {
-            throw PinboardClientError.RequestFailed(999)
+            throw PinboardClientError.RequestFailed()
         }
 
         let statusCode = (httpResponse as! HTTPURLResponse).statusCode
