@@ -76,23 +76,40 @@ public struct PinboardClient {
         }
     }
 
-    public func addBookmark(url: String, title: String?, description: String?) async throws {
+    public func addBookmark(
+        url: String,
+        title: String? = nil,
+        description: String? = nil,
+        tags: String? = nil,
+        isReadLater: Bool = false,
+        isPrivate: Bool = true
+    ) async throws {
         // https://api.pinboard.in/v1/posts/add
         //    ?auth_token=TOKEN_HERE
         //    &toread=no
+        //    &shared=yes
         //    &tags=tag1%20tag2%20tag3
         //    &extended=Description%20Is%20Here
         //    &url=https://netcetera.org/test
         //    &description=Title%20Goes%20Here
         //    &format=json
 
-        var args = ["url": url]
+        var args = [
+            "url": url,
+            "toread": isReadLater ? "yes" : "no",
+            "shared": isPrivate ? "no" : "yes"
+        ]
+        
         if let title = title {
             args["description"] = title
         }
 
         if let description = description {
             args["extended"] = description
+        }
+
+        if let tags = tags {
+            args["tags"] = tags
         }
 
         try await sendRequest(path: "/posts/add", queryArgs: args)
